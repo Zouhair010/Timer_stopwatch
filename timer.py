@@ -7,6 +7,7 @@ from kivymd.uix.list import OneLineListItem, MDList
 from kivymd.uix.scrollview import MDScrollView
 from kivymd.uix.widget import Widget
 from threading import Thread
+import threading
 from kivymd.color_definitions import colors
 from kivy.clock import Clock
 import time
@@ -60,11 +61,25 @@ class FirstScreen(MDBoxLayout):
         self.buttons_boxlayout.add_widget(Widget())
         self.buttons_boxlayout.add_widget(self.pause_button)
 
+        self.restart_button = MDRaisedButton(
+            text="restar",
+            theme_text_color="Custom",
+            # font_style='H6'
+        )
+        self.restart_button.bind(on_release=self.restart) 
+        self.buttons_boxlayout.add_widget(Widget())
+        self.buttons_boxlayout.add_widget(self.restart_button)
+
         self.add_widget(self.buttons_boxlayout)
 
         self.spacer = MDBoxLayout(size_hint_y=None, height=100,orientation ="horizontal",spacing=10, padding=10)
         self.add_widget(self.spacer)
 
+
+        self.scroll = MDScrollView()#to make tasks scroll
+        self.laps = MDList()
+        self.scroll.add_widget(self.laps)
+        self.add_widget(self.scroll)
 
         self.replaceTime(f"{0:02}:{0:02}:{0:02}")
 
@@ -87,6 +102,12 @@ class FirstScreen(MDBoxLayout):
         thread.join()
         self.cond = True
 
+    def restart(self,instance):
+        self.cond = False
+        thread.join()
+        self.cond = True
+        self.replaceTime(f"{0:02}:{0:02}:{0:02}")
+    
     def updateTime(self):
         hours, minutes, seconds = self.getTime()
         while self.cond:
