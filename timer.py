@@ -1,4 +1,3 @@
-# libs needed in that project
 from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.gridlayout import MDGridLayout
@@ -12,20 +11,24 @@ import threading
 from kivymd.color_definitions import colors
 from kivy.clock import Clock
 import time
+from datetime import datetime, date
 
 class FirstScreen(MDBoxLayout):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
         # Main layout properties
         self.orientation = "vertical"
         self.padding = 20
         self.spacing = 10
+
         # Box for timer display
         self.timer_boxlayout=MDBoxLayout(
             orientation = "horizontal",
             size_hint_y=None,
             height=60,
         )
+    
         # Timer text input (read-only)
         self.timer_textInput = TextInput(
             halign="center",
@@ -38,13 +41,16 @@ class FirstScreen(MDBoxLayout):
             background_color=(0,0,0,0),
             foreground_color= colors["Blue"]["800"]
         )
+    
         # Add timer with spacers
-        self.timer_boxlayout.add_widget(Widget(height=100))# spacer
+        self.timer_boxlayout.add_widget(Widget(height=100)) # spacer
         self.timer_boxlayout.add_widget(self.timer_textInput)
-        self.timer_boxlayout.add_widget(Widget(height=100))# spacer
+        self.timer_boxlayout.add_widget(Widget(height=100)) # spacer
         self.add_widget(self.timer_boxlayout)
-        # Add timer with spacers
+
+        # Layout for buttons
         self.buttons_boxlayout = MDGridLayout(cols=8, spacing=10, padding=20, size_hint_y=None, height=50)
+        
         # Start button
         self.start_button = MDRectangleFlatIconButton(
             text="start",
@@ -54,6 +60,7 @@ class FirstScreen(MDBoxLayout):
         )
         self.start_button.bind(on_release=self.start) 
         self.buttons_boxlayout.add_widget(self.start_button)
+
         # Pause button
         self.pause_button = MDRectangleFlatIconButton(
             text="pause",
@@ -62,8 +69,9 @@ class FirstScreen(MDBoxLayout):
             pos_hint={"center_x": 0.5, "center_y": 0.5}
         )
         self.pause_button.bind(on_release=self.pause)
-        self.buttons_boxlayout.add_widget(Widget())
+        self.buttons_boxlayout.add_widget(Widget()) # spacer
         self.buttons_boxlayout.add_widget(self.pause_button)
+
         # Restart button
         self.restart_button = MDRectangleFlatIconButton(
             text="restart",
@@ -72,8 +80,9 @@ class FirstScreen(MDBoxLayout):
             pos_hint={"center_x": 0.5, "center_y": 0.5}
         )
         self.restart_button.bind(on_release=self.restart) 
-        self.buttons_boxlayout.add_widget(Widget())
+        self.buttons_boxlayout.add_widget(Widget()) # spacer
         self.buttons_boxlayout.add_widget(self.restart_button)
+
         # Lap button
         self.lap_button = MDRectangleFlatIconButton(
             text="lap",
@@ -82,19 +91,24 @@ class FirstScreen(MDBoxLayout):
             pos_hint={"center_x": 0.5, "center_y": 0.5}
         )
         self.lap_button.bind(on_release=self.addLaps) 
-        self.buttons_boxlayout.add_widget(Widget())
+        self.buttons_boxlayout.add_widget(Widget()) # spacer
         self.buttons_boxlayout.add_widget(self.lap_button)
+
         self.add_widget(self.buttons_boxlayout)
+
         # Spacer between buttons and laps
         self.spacer = MDBoxLayout(size_hint_y=None, height=100,orientation ="horizontal",spacing=10, padding=10)
         self.add_widget(self.spacer)
+
         # Scrollable list for laps
-        self.scroll = MDScrollView()#to make tasks scroll
+        self.scroll = MDScrollView() # to make laps scrollable
         self.laps = MDList()
         self.scroll.add_widget(self.laps)
         self.add_widget(self.scroll)
+
         # Initialize timer display
-        self.replaceTime(f"{0:02}:{0:02}:{0:02}.{0:02}")
+        self.replaceTime(f"{0:02}:{0:02}:{0:02}.{0:06}")
+
         # Condition for thread loop
         self.cond = True
 
@@ -106,17 +120,19 @@ class FirstScreen(MDBoxLayout):
             theme_text_color="Custom",
             text_color= colors["Blue"]["800"],
         ))
+
     # Replace displayed time
     def replaceTime(self,txt):
         self.timer_textInput.text = txt
-    # Start timer thread 
+
+    # Start timer thread
     def start(self,instance):
         global thread
         print(threading.active_count())
-        if threading.active_count() == 1:
-            thread = Thread(target=self.updateTime)
-            thread.daemon = True
-            thread.start()
+        thread = Thread(target=self.updateTime)
+        thread.daemon = True
+        thread.start()
+        
     # Pause timer
     def pause(self,instance):
         try:
@@ -126,6 +142,7 @@ class FirstScreen(MDBoxLayout):
             print("exception")
 
         self.cond = True
+
     # Restart timer
     def restart(self,instance):
         try:
@@ -135,39 +152,17 @@ class FirstScreen(MDBoxLayout):
             print("exception")
 
         self.cond = True
-        self.replaceTime(f"{0:02}:{0:02}:{0:02}.{0:02}")
+        self.replaceTime(f"{0:02}:{0:02}:{0:02}.{0:06}")
         self.laps.clear_widgets()
-    # Timer update loop with microseconds
+    
+    # Timer update loop using datetime
     def updateTime(self):
-        hours, minutes, seconds, microsecs = self.getTime()
+        self.startTime = datetime.now()
         while self.cond:
-            Clock.schedule_once(lambda dt: self.replaceTime(f"{hours:02}:{minutes:02}:{seconds:02}.{microsecs:02}"))
-            time.sleep(0.1)
-            microsecs+=1
-            if microsecs == 10:
-                print(seconds)
-                microsecs = 0
-                seconds+=1
-                if seconds%60 == 0:
-                    seconds = 0
-                    minutes+=1
-                    if minutes%60 == 0:
-                        minutes = 0
-                        hours+=1 
-    # Extract time values from displayed text
-    def getTime(self):
-        dur = self.timer_textInput.text.strip()
-        durParts = []
-        part = ""
-        for ch in dur:
-            if ch.isdigit():
-                part+=ch
-            else:
-                durParts.append(int(part))
-                part = ""
-        durParts.append(int(part))
-        part = "" 
-        return durParts
+            time.sleep(0.001)
+            currTime = datetime.now()
+            print(f"{currTime-self.startTime}")
+            Clock.schedule_once(lambda dt: self.replaceTime(f"{currTime-self.startTime}"))
 
 # Main app class
 class Timer(MDApp):
