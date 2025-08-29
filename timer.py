@@ -14,7 +14,7 @@ from kivy.clock import Clock
 import time
 from datetime import datetime
 
-
+# Main layout
 class FirstScreen(MDBoxLayout):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -114,12 +114,18 @@ class FirstScreen(MDBoxLayout):
         # Condition for thread loop
         self.cond = True
 
+        # threads counter
+        self.threadsCouter = 0
+
     # Start timer thread
     def start(self, instance):
         global thread
-        thread = Thread(target=self.updateTime)
-        thread.daemon = True
-        thread.start()
+        #add a if statment to avoid creating many updatetime threads by tracing the the thread counter
+        if self.threadsCouter < 1:
+            self.threadsCouter +=  1
+            thread = Thread(target=self.updateTime)
+            thread.daemon = True#to avoid minimize the initial threads cout (befor creating updating desplayed time thread)
+            thread.start()
     
     # update timer display using datetime 
     def updateTime(self):
@@ -140,8 +146,11 @@ class FirstScreen(MDBoxLayout):
 
     # Pause timer
     def pause(self, instance):
+        #try block to avoid NameError(name 'thread' is not defined.) if the pause button is pressed befor start button( befor creating updatetime thread)
         try:
             self.cond = False
+            #to avoid decrementing thread couter (befor creating the updattime thread)
+            self.threadsCouter = self.threadsCouter - 1 if self.threadsCouter > 0 else self.threadsCouter
             thread.join()
         except:
             pass
@@ -150,8 +159,11 @@ class FirstScreen(MDBoxLayout):
 
     # Restart timer
     def restart(self, instance):
+        #try block to avoid NameError(name 'thread' is not defined.) if the restart button is pressed befor start button( befor creating updatetime thread)
         try:
             self.cond = False
+            #to avoid decrementing thread couter (befor creating the updattime thread)
+            self.threadsCouter = self.threadsCouter - 1 if self.threadsCouter > 0 else self.threadsCouter
             thread.join()
         except:
             pass
@@ -160,7 +172,7 @@ class FirstScreen(MDBoxLayout):
             self.replaceTime(f"{0:02}:{0:02}:{0:02}.{0:06}")
             self.laps.clear_widgets()
 
-    # Add current timer value as a lap
+    # Add current timer value as a lap on the scrollable lips list
     def addLaps(self, instance):
         self.laps.add_widget(OneLineListItem(
             text=self.timer_textInput.text.strip(),
