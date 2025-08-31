@@ -12,7 +12,7 @@ import threading
 from kivymd.color_definitions import colors
 from kivy.clock import Clock
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Main layout
 class FirstScreen(MDBoxLayout):
@@ -113,73 +113,70 @@ class FirstScreen(MDBoxLayout):
 
         # Condition for thread loop
         self.cond = True
-
-        # threads counter
-        self.threadsCouter = 0
+        
+        #to check if there is a updatetime thread 
+        self.therIsthread = False
 
     # Start timer thread
     def start(self, instance):
-        global thread
-        #add a if statment to avoid creating many updatetime threads by tracing the the thread counter
-        if self.threadsCouter < 1:
-            self.threadsCouter +=  1
+        #add a if statment to avoid creating many updatetime threads by checking if ther is a thread
+        if not self.therIsthread:
+            global thread
+            self.therIsthread = True
             thread = Thread(target=self.updateTime)
-            thread.daemon = True#to avoid minimize the initial threads cout (befor creating updating desplayed time thread)
+            thread.daemon = True
             thread.start()
     
     # update timer display using datetime 
     def updateTime(self):
-        # uses datetime.now() to track the actual time since the start.
-        intialDateTime = datetime.now()
-        h, m, s, ms = self.convertTime(self.getTime())
-        #convert desplayed time (time on the stopwatch) to datetime 
-        desplayedDateTime = datetime(year=datetime.now().year, month=datetime.now().month, day=datetime.now().day, hour=h, minute=m, second=s, microsecond=ms)
-        h, m, s, ms = self.convertTime(str(intialDateTime - desplayedDateTime))
-        # the difference (as a datetime) between the initial datetime and the desplayed datetime
-        self.startTime = datetime(year=datetime.now().year, month=datetime.now().month, day=datetime.now().day, hour=h, minute=m, second=s, microsecond=ms)
+        currrentDateTime = datetime.now()
+        #intialDateTime is the diffrence between the start datetime and the delta (the time on the stopwatch)
+        # intialDateTime allows us to complete counting from the time that we was stoped in
+        h,m,s,ms = self.convertTime(self.getTime()) #the time on the stopwatch as (hours, minutes, seconds, microseconds)
+        delta = timedelta(hours=h,minutes=m,seconds=s,microseconds=ms)
+        print(currrentDateTime)
+        intialDateTime = currrentDateTime-delta
+        print(intialDateTime)
         #  This relies on real time, making the timing more accurate and updating every 0.000001 seconds.
         while self.cond:
-            currTime = datetime.now()
-            # calculate the difference between the current datetime and the start datetime directly (currTime - self.startTime).
-            Clock.schedule_once(lambda dt: self.replaceTime(f"{currTime-self.startTime}"))
+            currDateTime = datetime.now()
+            # calculate the difference between the current datetime and the start datetime directly (currDateTime - intialDateTime).
+            Clock.schedule_once(lambda dt: self.replaceTime(f"{currDateTime-intialDateTime}"))
             time.sleep(0.000001)
 
     # Pause timer
     def pause(self, instance):
-        #try block to avoid NameError(name 'thread' is not defined.) if the pause button is pressed befor start button( befor creating updatetime thread)
-        try:
+        #to avoid NameError(name 'thread' is not defined.) if the pause button is pressed befor start button( befor creating updatetime thread)
+        if self.therIsthread:
             self.cond = False
-            #to avoid decrementing thread couter (befor creating the updattime thread)
-            self.threadsCouter = self.threadsCouter - 1 if self.threadsCouter > 0 else self.threadsCouter
             thread.join()
-        except:
-            pass
-        finally:
             self.cond = True
+            self.therIsthread = False
 
     # Restart timer
     def restart(self, instance):
-        #try block to avoid NameError(name 'thread' is not defined.) if the restart button is pressed befor start button( befor creating updatetime thread)
-        try:
+        #to avoid NameError(name 'thread' is not defined.) if the restart button is pressed befor start button( befor creating updatetime thread)
+        if self.therIsthread:
             self.cond = False
-            #to avoid decrementing thread couter (befor creating the updattime thread)
-            self.threadsCouter = self.threadsCouter - 1 if self.threadsCouter > 0 else self.threadsCouter
             thread.join()
-        except:
-            pass
-        finally:
+            self.replaceTime(f"{0:02}:{0:02}:{0:02}.{0:06}")
             self.cond = True
+            self.therIsthread = False
+            self.laps.clear_widgets()
+        else:
             self.replaceTime(f"{0:02}:{0:02}:{0:02}.{0:06}")
             self.laps.clear_widgets()
 
     # Add current timer value as a lap on the scrollable lips list
     def addLaps(self, instance):
-        self.laps.add_widget(OneLineListItem(
-            text=self.timer_textInput.text.strip(),
-            font_style='H6',
-            theme_text_color="Custom",
-            text_color=colors["Blue"]["800"],
-        ))
+        #to avoid adding laps befor geting stopwatch started 
+        if self.therIsthread:
+            self.laps.add_widget(OneLineListItem(
+                text=self.timer_textInput.text.strip(),
+                font_style='H6',
+                theme_text_color="Custom",
+                text_color=colors["Blue"]["800"],
+            ))
 
     # Replace displayed time
     def replaceTime(self, txt):
